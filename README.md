@@ -1,6 +1,6 @@
 # Capsnet - Traffic sign classifier - Tensorflow
 
-A Tensorflow implementation of CapsNet(Capsules Net) apply on german traffic sign dataset
+A Tensorflow implementation of CapsNet(Capsules Net) apply on the german traffic sign dataset
 
 [![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=plastic)](CONTRIBUTING.md)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=plastic)](https://opensource.org/licenses/Apache-2.0)
