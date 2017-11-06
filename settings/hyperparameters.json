@@ -1,0 +1,9 @@
+{
+    "conv_1_size": 9,
+    "conv_1_nb": 256,
+    "caps_1_vec_len": 8,
+    "caps_1_size": 9,
+    "caps_1_nb_filter": 32,
+    "caps_2_vec_len": 16,
+    "learning_rate": 0.0005
+}
