@@ -8,7 +8,7 @@ A Tensorflow implementation of CapsNet(Capsules Net) apply on german traffic sig
 
 This implementation is based on this paper: <b>Dynamic Routing Between Capsules</b> (https://arxiv.org/abs/1710.09829) from Sara Sabour, Nicholas Frosst and Geoffrey E. Hinton.
 
-This repository is a work in progress implementation of the Cpasules Net. Since I am using a different dataset (Not MNIST) some details in the architecture are differents. The code for the CapsNet is located in the following file: <b>caps_net.py</b> while the whole model is created inside the <b>model.py</b> file. The two main methods used to build the CapsNet are  <b>conv_caps_layer</b> and <b>fully_connected_caps_layer</b>
+This repository is a work in progress implementation of a Capsules Net. Since I am using a different dataset (Not MNIST) some details in the architecture are different. The code for the CapsNet is located in the following file: <b>caps_net.py</b> while the whole model is created inside the <b>model.py</b> file. The two main methods used to build the CapsNet are  <b>conv_caps_layer</b> and <b>fully_connected_caps_layer</b>
 
 <img src="images/chart.jpg"></img>
 
