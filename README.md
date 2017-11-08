@@ -17,6 +17,7 @@ This repository is a work in progress implementation of a Capsules Net. Since I 
 - NumPy 1.13.1
 - Tensorflow 1.3.0
 - docopt 0.6.2
+- Sklearn: 0.18.1
 
 ## Install
 
