@@ -1,0 +1,1 @@
+floyd run --gpu --data thibo73800/datasets/trafic_sign/1:/datasets 'python train.py /datasets /output'

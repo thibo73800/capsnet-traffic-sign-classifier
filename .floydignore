@@ -1,7 +1,9 @@
 
 # Directories and files to ignore when uploading code to floyd
 
-dataset
+images/*
+dataset/*
+outputs/*
 .git
 .eggs
 eggs

@@ -130,6 +130,22 @@ class ModelBase(object):
             Init tensorflow session
             A saver property is create at the same time
         """
+        #  Create session
+        self.saver = tf.train.Saver()
+        self.sess = tf.Session()
+        # Init variables
+        self.sess.run(tf.global_variables_initializer())
+        # Tensorboard
+        self.tf_tensorboard = tf.summary.merge_all()
+        train_log_name = os.path.join(
+            os.path.join(self.output_folder, "tensorboard"), self.name, self.sub_train_log_name)
+        test_log_name = os.path.join(
+            os.path.join(self.output_folder, "tensorboard"), self.name, self.sub_test_log_name)
+        self.train_writer = tf.summary.FileWriter(train_log_name, self.sess.graph)
+        self.test_writer = tf.summary.FileWriter(test_log_name)
+        self.train_writer_it = 0
+        self.test_writer_it = 0
+
         # Backup tensors
         backup_tensors = {}
         for field in dir(self):
@@ -144,22 +160,6 @@ class ModelBase(object):
             n_cst = tf.constant(value, dtype=d_type, name="hyp/%s" % field)
             backup_hyp[field] = n_cst.name
         tf.constant(json.dumps(backup_hyp), dtype=tf.string, name="model_base_hyp_backup")
-
-        #  Create session
-        self.sess = tf.Session()
-        # Init variables
-        self.sess.run(tf.global_variables_initializer())
-        self.saver = tf.train.Saver()
-        # Tensorboard
-        self.tf_tensorboard = tf.summary.merge_all()
-        train_log_name = os.path.join(
-            os.path.join(self.output_folder, "tensorboard"), self.name, self.sub_train_log_name)
-        test_log_name = os.path.join(
-            os.path.join(self.output_folder, "tensorboard"), self.name, self.sub_test_log_name)
-        self.train_writer = tf.summary.FileWriter(train_log_name, self.sess.graph)
-        self.test_writer = tf.summary.FileWriter(test_log_name)
-        self.train_writer_it = 0
-        self.test_writer_it = 0
 
     def get_equal_batches(self, data, labels, batch_size):
         """
@@ -272,9 +272,8 @@ class ModelBase(object):
     def dump_batch(self, folder, data):
         """
             Save batches
-            Mainly used for ReinforcementLearning
+            Mainly used for Reinforcement Learning
         """
-
         folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), folder)
         # Create folder if not exist
         if not os.path.exists(folder):
@@ -289,46 +288,61 @@ class ModelBase(object):
         """
         log.info("Loading ckpt ...")
         #loaded_graph = tf.Graph()
-        g = tf.Graph()
-        with g.as_default():
-            self.sess = tf.Session(graph=g)
-            # Load the graph
-            loader = tf.train.import_meta_graph(ckpt + '.meta')
-            loader.restore(self.sess, ckpt)
+        #tf.reset_default_graph()
+        #g = tf.Graph()
+        #with g.as_default():
+        self.sess = tf.Session()
+        # Load the graph
+        loader = tf.train.import_meta_graph(ckpt + '.meta')
+        loader.restore(self.sess, ckpt)
 
-            # Search for the backup tensor
-            tensor_names = [
-                n.name for n in g.as_graph_def().node if "model_base_tensors_backup" in n.name]
+        g = tf.get_default_graph()
 
-            # Search for the backup hyp
-            hyp_names = [
-                n.name for n in g.as_graph_def().node if "model_base_hyp_backup" in n.name]
+        # Search for the backup tensor
+        tensor_names = [
+            n.name for n in g.as_graph_def().node if "model_base_tensors_backup" in n.name]
 
-            # Get the tensor string
-            #tensors = g.get_tensor_by_name(names[0])
-            tensors = g.get_operation_by_name(tensor_names[0]).outputs
-            hyps = g.get_operation_by_name(hyp_names[0]).outputs
-            self.sess.run(tf.global_variables_initializer())
+        # Search for the backup hyp
+        hyp_names = [
+            n.name for n in g.as_graph_def().node if "model_base_hyp_backup" in n.name]
 
-            tensors = self.sess.run(tensors)[0]
-            tensors = json.loads(tensors)
-            for tensor in tensors:
-                try:
-                    n_tensor = g.get_tensor_by_name(tensors[tensor])
-                except Exception as e:
-                    n_tensor = g.get_operation_by_name(tensors[tensor])
-                setattr(self, tensor, n_tensor)
+        # Get the tensor string
+        #tensors = g.get_tensor_by_name(names[0])
+        tensors = g.get_operation_by_name(tensor_names[0]).outputs
+        hyps = g.get_operation_by_name(hyp_names[0]).outputs
 
-            hyps = self.sess.run(hyps)[0]
-            hyps = json.loads(hyps)
-            for hyp in hyps:
-                n_hyp = g.get_tensor_by_name(hyps[hyp])
-                setattr(self.h, hyp, self.sess.run(n_hyp))
+        #self.sess.run(tf.global_variables_initializer())
 
-            log.info("Ckpt ready")
+        tensors = self.sess.run(tensors)[0]
+        tensors = json.loads(tensors)
+        for tensor in tensors:
+            try:
+                n_tensor = g.get_tensor_by_name(tensors[tensor])
+            except Exception as e:
+                n_tensor = g.get_operation_by_name(tensors[tensor])
+            setattr(self, tensor, n_tensor)
 
-            self.model_name = ckpt.split("/")[-1]
-            self.saver = tf.train.Saver()
+        hyps = self.sess.run(hyps)[0]
+        hyps = json.loads(hyps)
+        for hyp in hyps:
+            n_hyp = g.get_tensor_by_name(hyps[hyp])
+            setattr(self.h, hyp, self.sess.run(n_hyp))
+
+        log.info("Ckpt ready")
+
+        # Tensorboard
+        self.tf_tensorboard = tf.summary.merge_all()
+        train_log_name = os.path.join(
+            os.path.join(self.output_folder, "tensorboard"), self.name, self.sub_train_log_name)
+        test_log_name = os.path.join(
+            os.path.join(self.output_folder, "tensorboard"), self.name, self.sub_test_log_name)
+        self.train_writer = tf.summary.FileWriter(train_log_name, self.sess.graph)
+        self.test_writer = tf.summary.FileWriter(test_log_name)
+        self.train_writer_it = 0
+        self.test_writer_it = 0
+
+        self.model_name = ckpt.split("/")[-1]
+        self.saver = tf.train.Saver()
 
 
 if __name__ == '__main__':

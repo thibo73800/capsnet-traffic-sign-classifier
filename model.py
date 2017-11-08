@@ -29,8 +29,8 @@ class ModelTrafficSign(ModelBase):
             Build tensorflow inputs
             (Placeholder)
             **return: **
-                *tf_images
-                *tf_labels
+                *tf_images: Images Placeholder
+                *tf_labels: Labels Placeholder
         """
         # Images 32*32*3
         tf_images = tf.placeholder(tf.float32, [None, 32, 32, 3], name='images')
@@ -38,36 +38,45 @@ class ModelTrafficSign(ModelBase):
         tf_labels = tf.placeholder(tf.int64, [None], name='labels')
         return tf_images, tf_labels
 
-    def _build_main_network(self, images):
+    def _build_main_network(self, images, conv_2_dropout):
         """
-            This method is used to create the first convolution and the CapsNet on the top
+            This method is used to create the two convolutions and the CapsNet on the top
             **input:
-                *images
+                *images: Image PLaceholder
+                *conv_2_dropout: Dropout value placeholder
+            **return: **
+                *Caps1: Output of first Capsule layer
+                *Caps2: Output of second Capsule layer
         """
-        # Create first convolution
+        # First BLock:
+        # Layer 1: Convolutional.
         shape = (self.h.conv_1_size, self.h.conv_1_size, 3, self.h.conv_1_nb)
-        conv1 = self._create_conv(images, shape, padding='VALID')
+        conv1 = self._create_conv(self.tf_images, shape, relu=True, max_pooling=False, padding='VALID')
+        # Layer 2: Convolutional.
+        shape = (self.h.conv_2_size, self.h.conv_2_size, self.h.conv_1_nb, self.h.conv_2_nb)
+        conv2 = self._create_conv(conv1, shape, relu=True, max_pooling=False, padding='VALID')
+        conv2 = tf.nn.dropout(conv2, keep_prob=conv_2_dropout)
 
-        # Create the first capstules layer
+        # Create the first capsules layer
         caps1 = conv_caps_layer(
-            input_layer=conv1,
+            input_layer=conv2,
             capsules_size=self.h.caps_1_vec_len,
             nb_filters=self.h.caps_1_nb_filter,
             kernel=self.h.caps_1_size)
-
-        # Create the second capstule layes used to predict the output
+        # Create the second capsules layes used to predict the output
         caps2 = fully_connected_caps_layer(
             input_layer=caps1,
             capsules_size=self.h.caps_2_vec_len,
-            nb_capsules=self.NB_LABELS)
+            nb_capsules=self.NB_LABELS,
+            iterations=self.h.routing_steps)
 
         return caps1, caps2
 
     def _build_decoder(self, caps2, one_hot_labels, batch_size):
         """
-            Build the decoder part from the capsules
+            Build the decoder part from the last capsule layer
             **input:
-                *caps2
+                *Caps2:  Output of second Capsule layer
                 *one_hot_labels
                 *batch_size
         """
@@ -83,15 +92,16 @@ class ModelTrafficSign(ModelBase):
         fc1 = tf.contrib.layers.fully_connected(capsule_vector, num_outputs=400)
         fc1 = tf.reshape(fc1, shape=(batch_size, 5, 5, 16))
         upsample1 = tf.image.resize_nearest_neighbor(fc1, (8, 8))
-        conv1 = tf.layers.conv2d(upsample1, 8, (3,3), padding='same', activation=tf.nn.relu)
+        conv1 = tf.layers.conv2d(upsample1, 4, (3,3), padding='same', activation=tf.nn.relu)
 
         upsample2 = tf.image.resize_nearest_neighbor(conv1, (16, 16))
-        conv2 = tf.layers.conv2d(upsample2, 16, (3,3), padding='same', activation=tf.nn.relu)
+        conv2 = tf.layers.conv2d(upsample2, 8, (3,3), padding='same', activation=tf.nn.relu)
 
         upsample3 = tf.image.resize_nearest_neighbor(conv2, (32, 32))
-        conv6 = tf.layers.conv2d(upsample3, 32, (3,3), padding='same', activation=tf.nn.relu)
+        conv6 = tf.layers.conv2d(upsample3, 16, (3,3), padding='same', activation=tf.nn.relu)
 
-        logits = tf.layers.conv2d(conv6, 1, (3,3), padding='same', activation=None)
+        # 3 channel for RGG
+        logits = tf.layers.conv2d(conv6, 3, (3,3), padding='same', activation=None)
         decoded = tf.nn.sigmoid(logits, name='decoded')
         tf.summary.image('reconstruction_img', decoded)
 
@@ -103,18 +113,24 @@ class ModelTrafficSign(ModelBase):
         """
         # Get graph inputs
         self.tf_images, self.tf_labels = self._build_inputs()
-        batch_size = tf.shape(self.tf_images)[0] # Dynamic batch size
+        # Dropout inputs
+        self.tf_conv_2_dropout = tf.placeholder(tf.float32, shape=(), name='conv_2_dropout')
+        # Dynamic batch size
+        batch_size = tf.shape(self.tf_images)[0]
         # Translate labels to one hot array
         one_hot_labels = tf.one_hot(self.tf_labels, depth=self.NB_LABELS)
         # Create the first convolution and the CapsNet
-        self.tf_caps1, self.tf_caps2 = self._build_main_network(self.tf_images)
+        self.tf_caps1, self.tf_caps2 = self._build_main_network(self.tf_images, self.tf_conv_2_dropout)
+
         # Build the images reconstruction
         self.tf_decoded = self._build_decoder(self.tf_caps2, one_hot_labels, batch_size)
 
         # Build the loss
         _loss = self._build_loss(
             self.tf_caps2, one_hot_labels, self.tf_labels, self.tf_decoded, self.tf_images)
-        self.tf_accuracy, self.tf_loss, self.tf_margin_loss, self.tf_reconstruction_loss = _loss
+        (self.tf_loss_squared_rec, self.tf_margin_loss_sum, self.tf_predicted_class,
+         self.tf_correct_prediction, self.tf_accuracy, self.tf_loss, self.tf_margin_loss,
+         self.tf_reconstruction_loss) = _loss
 
         # Build optimizer
         optimizer = tf.train.AdamOptimizer(learning_rate=self.h.learning_rate)
@@ -125,6 +141,8 @@ class ModelTrafficSign(ModelBase):
         tf.summary.scalar('accuracy', self.tf_accuracy)
         tf.summary.scalar('total_loss', self.tf_loss)
         tf.summary.scalar('reconstruction_loss', self.tf_reconstruction_loss)
+
+        self.tf_test = tf.random_uniform([2], minval=0, maxval=None, dtype=tf.float32, seed=None, name="tf_test")
 
         self.init_session()
 
@@ -142,11 +160,12 @@ class ModelTrafficSign(ModelBase):
         max_r = tf.reshape(max_r, shape=(-1, self.NB_LABELS))
         t_c = one_hot_labels
         m_loss = t_c * max_l + 0.5 * (1 - t_c) * max_r
-        margin_loss = tf.reduce_mean(tf.reduce_sum(m_loss, axis=1))
+        margin_loss_sum = tf.reduce_sum(m_loss, axis=1)
+        margin_loss = tf.reduce_mean(margin_loss_sum)
 
         # Reconstruction loss
-        squared = tf.square(decoded - images)
-        reconstruction_loss = tf.reduce_mean(squared)
+        loss_squared_rec = tf.square(decoded - images)
+        reconstruction_loss = tf.reduce_mean(loss_squared_rec)
 
         # 3. Total loss
         loss = margin_loss + (0.0005 * reconstruction_loss)
@@ -157,18 +176,26 @@ class ModelTrafficSign(ModelBase):
         correct_prediction = tf.equal(predicted_class, labels)
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
-        return accuracy, loss, margin_loss, reconstruction_loss
-
+        return (loss_squared_rec, margin_loss_sum, predicted_class, correct_prediction, accuracy,
+                loss, margin_loss, reconstruction_loss)
 
     def optimize(self, images, labels, tb_save=True):
         """
             Train the model
+            **input: **
+                *images: Image to train the model on
+                *labels: True classes
+                *tb_save: (Boolean) Log this optimization in tensorboard
+            **return: **
+                Loss: The loss of the model on this batch
+                Acc: Accuracy of the model on this batch
         """
-        tensors = [self.tf_optimizer, self.tf_loss, self.tf_accuracy, self.tf_tensorboard]
+        tensors = [self.tf_optimizer, self.tf_margin_loss, self.tf_accuracy, self.tf_tensorboard]
         _, loss, acc, summary = self.sess.run(tensors,
             feed_dict={
             self.tf_images: images,
-            self.tf_labels: labels
+            self.tf_labels: labels,
+            self.tf_conv_2_dropout: self.h.conv_2_dropout
         })
 
         if tb_save:
@@ -181,12 +208,21 @@ class ModelTrafficSign(ModelBase):
     def evaluate(self, images, labels, tb_train_save=False, tb_test_save=False):
         """
             Evaluate dataset
+            **input: **
+                *images: Image to train the model on
+                *labels: True classes
+                *tb_train_save: (Boolean) Log this optimization in tensorboard under the train part
+                *tb_test_save: (Boolean) Log this optimization in tensorboard under the test part
+            **return: **
+                Loss: The loss of the model on this batch
+                Acc: Accuracy of the model on this batch
         """
-        tensors = [self.tf_loss, self.tf_accuracy, self.tf_tensorboard]
+        tensors = [self.tf_margin_loss, self.tf_accuracy, self.tf_tensorboard]
         loss, acc, summary = self.sess.run(tensors,
                 feed_dict={
                 self.tf_images: images,
-                self.tf_labels: labels
+                self.tf_labels: labels,
+                self.tf_conv_2_dropout: 1.
             })
 
         if tb_test_save:
@@ -200,6 +236,100 @@ class ModelTrafficSign(ModelBase):
             self.train_writer_it += 1
 
         return loss, acc
+
+    def predict(self, images):
+        """
+            Method used to predict a class
+            Return a softmax
+            **input: **
+                *images: Image to train the model on
+            **return:
+                *softmax: Softmax between all capsules
+        """
+        tensors = [self.tf_caps2]
+
+        caps2 = self.sess.run(tensors,
+            feed_dict={
+            self.tf_images: images,
+            self.tf_conv_2_dropout: 1.
+        })[0]
+
+        # tf.sqrt(tf.reduce_sum(tf.square(caps2), axis=2, keep_dims=True))
+        caps2 = np.sqrt(np.sum(np.square(caps2), axis=2, keepdims=True))
+        caps2 = np.reshape(caps2, (len(images), self.NB_LABELS))
+        # softmax
+        softmax = np.exp(caps2) / np.sum(np.exp(caps2), axis=1, keepdims=True)
+
+        return softmax
+
+    def reconstruction(self, images, labels):
+        """
+            Method used to get the reconstructions given a batch
+            Return the result as a softmax
+            **input: **
+                *images: Image to train the model on
+                *labels: True classes
+        """
+        tensors = [self.tf_decoded]
+
+        decoded = self.sess.run(tensors,
+            feed_dict={
+            self.tf_images: images,
+            self.tf_labels: labels,
+            self.tf_conv_2_dropout: 1.
+        })[0]
+
+        return decoded
+
+    def evaluate_dataset(self, images, labels, batch_size=10):
+        """
+            Evaluate a full dataset
+            This method is used to fully evaluate the dataset batch per batch. Useful when
+            the dataset can't be fit inside to the GPU.
+            *input: **
+                *images: Image to train the model on
+                *labels: True classes
+            *return: **
+                *loss: Loss overall your dataset
+                *accuracy: Accuracy overall your dataset
+                *predicted_class: Predicted class
+        """
+        tensors = [self.tf_loss_squared_rec, self.tf_margin_loss_sum, self.tf_correct_prediction,
+                   self.tf_predicted_class]
+
+        loss_squared_rec_list = None
+        margin_loss_sum_list = None
+        correct_prediction_list = None
+        predicted_class = None
+
+        b = 0
+        for batch in self.get_batches([images, labels], batch_size, shuffle=False):
+            images_batch, labels_batch = batch
+            loss_squared_rec, margin_loss_sum, correct_prediction, classes = self.sess.run(tensors,
+                feed_dict={
+                self.tf_images: images_batch,
+                self.tf_labels: labels_batch,
+                self.tf_conv_2_dropout: 1.
+            })
+            if loss_squared_rec_list is not None:
+                predicted_class = np.concatenate((predicted_class, classes))
+                loss_squared_rec_list = np.concatenate((loss_squared_rec_list, loss_squared_rec))
+                margin_loss_sum_list = np.concatenate((margin_loss_sum_list, margin_loss_sum))
+                correct_prediction_list = np.concatenate((correct_prediction_list, correct_prediction))
+            else:
+                predicted_class = classes
+                loss_squared_rec_list = loss_squared_rec
+                margin_loss_sum_list = margin_loss_sum
+                correct_prediction_list = correct_prediction
+            b += batch_size
+
+        margin_loss = np.mean(margin_loss_sum_list)
+        reconstruction_loss = np.mean(loss_squared_rec_list)
+        accuracy = np.mean(correct_prediction_list)
+
+        loss = margin_loss
+
+        return loss, accuracy, predicted_class
 
 
 if __name__ == '__main__':
