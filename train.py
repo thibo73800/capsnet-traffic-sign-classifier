@@ -47,8 +47,8 @@ def train(dataset, ckpt=None, output=None):
         """
         img = img * 255
         img = Image.fromarray(img.astype('uint8'), 'RGB')
-        img = ImageEnhance.Brightness(img).enhance(random.uniform(0.5, 1.5))
-        img = ImageEnhance.Contrast(img).enhance(random.uniform(0.5, 1.5))
+        img = ImageEnhance.Brightness(img).enhance(random.uniform(0.3, 1.7))
+        img = ImageEnhance.Contrast(img).enhance(random.uniform(0.3, 1.7))
 
         return np.array(img) / 255
 
