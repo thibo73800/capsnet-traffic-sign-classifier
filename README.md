@@ -32,12 +32,31 @@ This repository is a work in progress implementation of a Capsules Net. Since I 
 
     $> python train.py -h
     $> python train.py dataset/
- 
+
+During the training, the checkpoint is saved by default into the outputs/checkpoints/ folder. The exact path and name of the checkpoint is print during the training.
+
+## Test
+
+In order to measure the accuracy and the loss on the Test dataset you need to used the test.py script as follow:
+
+    $> python test.py outputs/checkpoints/ckpt_name dataset/ 
+
 ## Metrics / Tensorboard
+
+<b>Accuracy: </b>
+<ul>
+    <li>Train: 99%</li>
+    <li>Validation: 97%</li>
+    <li>Test: 94%</li>
+</ul>
 
 Checkpoints and tensorboard files are stored inside the <b>outputs</b> folder.
 
 <img src="images/tensorboard.png"></img>
+
+Exemple of some prediction:
+
+<img src="images/softmax.png"></img>
 
 
 
