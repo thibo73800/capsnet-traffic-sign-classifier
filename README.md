@@ -48,8 +48,8 @@ In order to measure the accuracy and the loss on the Test dataset you need to us
 <b>Accuracy: </b>
 <ul>
     <li>Train: 99%</li>
-    <li>Validation: 97%</li>
-    <li>Test: 94%</li>
+    <li>Validation: 98%</li>
+    <li>Test: 95%</li>
 </ul>
 
 Checkpoints and tensorboard files are stored inside the <b>outputs</b> folder.
