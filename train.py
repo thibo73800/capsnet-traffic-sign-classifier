@@ -47,8 +47,8 @@ def train(dataset, ckpt=None, output=None):
         """
         img = img * 255
         img = Image.fromarray(img.astype('uint8'), 'RGB')
-        img = ImageEnhance.Brightness(img).enhance(random.uniform(0.3, 1.7))
-        img = ImageEnhance.Contrast(img).enhance(random.uniform(0.3, 1.7))
+        img = ImageEnhance.Brightness(img).enhance(random.uniform(0.6, 1.5))
+        img = ImageEnhance.Contrast(img).enhance(random.uniform(0.6, 1.5))
 
         return np.array(img) / 255
 
@@ -88,6 +88,7 @@ def train(dataset, ckpt=None, output=None):
     valid_batch = inference_datagen.flow(X_valid, y_valid, batch_size=BATCH_SIZE)
     best_validation_loss = None
     augmented_factor = 0.99
+    decrease_factor = 0.99
     train_batches = train_datagen.flow(X_train, y_train, batch_size=BATCH_SIZE)
     augmented_train_batches = train_datagen_augmented.flow(X_train, y_train, batch_size=BATCH_SIZE)
 
@@ -114,8 +115,7 @@ def train(dataset, ckpt=None, output=None):
             if best_validation_loss is None or loss < best_validation_loss:
                 best_validation_loss = loss
                 model.save()
-        if b % 10000 == 0 and b != 0:
-            augmented_factor = augmented_factor * augmented_factor
+            augmented_factor = augmented_factor * decrease_factor
             print("Augmented Factor = %s" % augmented_factor)
 
         b += 1

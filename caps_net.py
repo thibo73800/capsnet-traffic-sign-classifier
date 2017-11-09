@@ -119,7 +119,7 @@ def squash(vector):
         **input: **
             *vector
     """
-    # vector += 0.0001 # Workaround for the squashing function ...
+    vector += 0.00001 # Workaround for the squashing function ...
     vec_squared_norm = tf.reduce_sum(tf.square(vector), -2, keep_dims=True)
     scalar_factor = vec_squared_norm / (1 + vec_squared_norm) / tf.sqrt(vec_squared_norm)
     vec_squashed = scalar_factor * vector  # element-wise

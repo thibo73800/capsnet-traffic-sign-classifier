@@ -8,6 +8,6 @@
     "caps_1_size": 5,
     "caps_1_nb_filter": 32,
     "caps_2_vec_len": 16,
-    "learning_rate": 0.00002,
+    "learning_rate": 0.00005,
     "routing_steps": 2
 }
