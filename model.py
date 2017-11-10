@@ -49,10 +49,10 @@ class ModelTrafficSign(ModelBase):
                 *Caps2: Output of second Capsule layer
         """
         # First BLock:
-        # Layer 1: Convolutional.
+        # Layer 1: Convolution.
         shape = (self.h.conv_1_size, self.h.conv_1_size, 3, self.h.conv_1_nb)
         conv1 = self._create_conv(self.tf_images, shape, relu=True, max_pooling=False, padding='VALID')
-        # Layer 2: Convolutional.
+        # Layer 2: Convolution.
         shape = (self.h.conv_2_size, self.h.conv_2_size, self.h.conv_1_nb, self.h.conv_2_nb)
         conv2 = self._create_conv(conv1, shape, relu=True, max_pooling=False, padding='VALID')
         conv2 = tf.nn.dropout(conv2, keep_prob=conv_2_dropout)
@@ -63,7 +63,7 @@ class ModelTrafficSign(ModelBase):
             capsules_size=self.h.caps_1_vec_len,
             nb_filters=self.h.caps_1_nb_filter,
             kernel=self.h.caps_1_size)
-        # Create the second capsules layes used to predict the output
+        # Create the second capsules layer used to predict the output
         caps2 = fully_connected_caps_layer(
             input_layer=caps1,
             capsules_size=self.h.caps_2_vec_len,
@@ -333,5 +333,5 @@ class ModelTrafficSign(ModelBase):
 
 
 if __name__ == '__main__':
-    model_traffic_sign = ModelTrafficSign("test")
+    model_traffic_sign = ModelTrafficSign("test", output_folder=None)
     model_traffic_sign.init()
