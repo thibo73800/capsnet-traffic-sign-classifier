@@ -1,13 +1,13 @@
 {
-    "conv_1_size": 6,
+    "conv_1_size": 9,
     "conv_1_nb": 256,
     "conv_2_size": 6,
     "conv_2_nb": 64,
-    "conv_2_dropout": 0.4,
-    "caps_1_vec_len": 8,
+    "conv_2_dropout": 0.7,
+    "caps_1_vec_len": 16,
     "caps_1_size": 5,
-    "caps_1_nb_filter": 32,
-    "caps_2_vec_len": 16,
+    "caps_1_nb_filter": 16,
+    "caps_2_vec_len": 32,
     "learning_rate": 0.0001,
-    "routing_steps": 2
+    "routing_steps": 1
 }

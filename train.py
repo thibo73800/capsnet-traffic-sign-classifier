@@ -88,7 +88,7 @@ def train(dataset, ckpt=None, output=None):
     valid_batch = inference_datagen.flow(X_valid, y_valid, batch_size=BATCH_SIZE)
     best_validation_loss = None
     augmented_factor = 0.99
-    decrease_factor = 0.99
+    decrease_factor = 0.80
     train_batches = train_datagen.flow(X_train, y_train, batch_size=BATCH_SIZE)
     augmented_train_batches = train_datagen_augmented.flow(X_train, y_train, batch_size=BATCH_SIZE)
 

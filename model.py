@@ -53,13 +53,13 @@ class ModelTrafficSign(ModelBase):
         shape = (self.h.conv_1_size, self.h.conv_1_size, 3, self.h.conv_1_nb)
         conv1 = self._create_conv(self.tf_images, shape, relu=True, max_pooling=False, padding='VALID')
         # Layer 2: Convolution.
-        shape = (self.h.conv_2_size, self.h.conv_2_size, self.h.conv_1_nb, self.h.conv_2_nb)
-        conv2 = self._create_conv(conv1, shape, relu=True, max_pooling=False, padding='VALID')
-        conv2 = tf.nn.dropout(conv2, keep_prob=conv_2_dropout)
+        #shape = (self.h.conv_2_size, self.h.conv_2_size, self.h.conv_1_nb, self.h.conv_2_nb)
+        #conv2 = self._create_conv(conv1, shape, relu=True, max_pooling=False, padding='VALID')
+        conv1 = tf.nn.dropout(conv1, keep_prob=conv_2_dropout)
 
         # Create the first capsules layer
         caps1 = conv_caps_layer(
-            input_layer=conv2,
+            input_layer=conv1,
             capsules_size=self.h.caps_1_vec_len,
             nb_filters=self.h.caps_1_nb_filter,
             kernel=self.h.caps_1_size)
